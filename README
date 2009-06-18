@@ -1,0 +1,44 @@
+Car Engine Datalogger
+=====================
+
+Copyright 2009 Jonathan Oxer
+Copyright 2009 Hugh Blemings
+
++---------------------------------------------------------------------+
+| This project is featured in the book "Practical Arduino" by         |
+| Jonathan Oxer and Hugh Blemings (Apress, 2009). More information    |
+| about the book and this project is available at:                    |
+|                                                                     |
+| www.practicalarduino.com/projects/hard/car-engine-datalogger        |
++---------------------------------------------------------------------+
+
+Ever wondered what goes on under the hood of your car? Wish you could
+peek inside the engine management system and read values from it?
+Annoyed that your dashboard shows a cryptic "Check Engine" light (CEL)
+but no explanation about what the problem might be?
+
+All cars and light trucks sold in the US since 1996 have been required
+by law to provide a standard interface called "OBD-II" (On-Board
+diagnostics version 2) that provides access to a variety of operational
+data about the vehicle. Europe followed in 2001 for petrol vehicles and
+2003/4 for diesels with the "EOBD" (European OBD) standard which is
+basically just OBD-II with a different label.
+
+Because car manufacturers try to standardise their production lines as
+much as possible OBD-II vehicles also found their way into many markets
+outside the US as early as 1996. Japanese car manufacturers, in
+particular, deployed OBD-II in all markets very rapidly even when not
+legally required to do so. The result is that when you take your car to
+an auto mechanic the first thing they usually do is plug in a laptop
+using a USB to OBD-II adaptor, then run some software that interrogates
+the engine management system to retrieve stored information such as
+faults that have been logged automatically since the last service.
+
+But you don't need a full laptop computer to get access to the data.
+With this project we modify a commonly-available OBD-II adaptor so you
+can link an Arduino to your car and log data in real time as you drive
+around. By reading and storing OBD data you can create a "black box"
+flight recorder for your car - use it to generate graphs of vehicle
+performance, or record a complete snapshot of all engine management
+parameters at the moment a fault occurs, or even as evidence that you
+weren't speeding if you're involved in an accident!

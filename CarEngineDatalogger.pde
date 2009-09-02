@@ -9,14 +9,15 @@
  * several serial ports running at moderately high speed simultaneously.
  *
  * Serial connections are:
- *   Serial  = host computer
- *   Serial1 = OBD-II interface
- *   Serial2 = GPS module
- *   Serial3 = Vinculum flash storage
+ *   Serial  = host computer           38400bps
+ *   Serial1 = OBD-II interface        38400bps
+ *   Serial2 = GPS module              38400bps
+ *   Serial3 = Vinculum flash storage  9600bps
  *
  * Copyright 2009 Jonathan Oxer <jon@oxer.com.au>
  * http://www.practicalarduino.com/projects/hard/car-engine-datalogger
  */
+
 #define ledPin 13
 #define HOST Serial
 int incomingByte = 0;  // for incoming serial data
@@ -60,10 +61,18 @@ void setup() {
   FLASH.print(13, BYTE);
   HOST.println("[OK]");
   
-  //delay(1000);
-  //Serial.println("Sending ATRV");
-  //Serial1.println("ATRV");
-  //requestObdValue();
+  /*delay(5000);
+  HOST.println("Checking firmware version:");
+  FLASH.print("FWV");           // Asks for the firmware version
+  FLASH.print(13, BYTE);
+  while(incomingByte != 13 )
+  {
+    if (FLASH.available() > 0) {
+      incomingByte = FLASH.read();
+      HOST.print(incomingByte, BYTE);
+    }
+  }
+  HOST.println(); */
 }
 
 
@@ -72,15 +81,27 @@ void setup() {
  */
 void loop()
 {  
-  HOST.println( "Getting GPS reading" );
+  //HOST.println( "Getting GPS reading" );
   getGpsReading( gpsReading );
   HOST.println( gpsReading );
-  delay( 5000 );
+  //HOST.println("done");
+  delay( 100 );
   
-  HOST.println( "Getting RPM reading" );
-  byte mode = 0x01;
-  byte parameter = 0x0C;
+  byte mode = 0x0;
+  byte parameter = 0x0;
+  
+  /* HOST.println( "Getting RPM reading" );
+  mode = 0x01;
+  parameter = 0x0C;
   getObdValue( mode, parameter );
+  HOST.println("done");
+  delay( 100 ); */
+  
+  HOST.println( "Getting speed reading" );
+  mode = 0x01;
+  parameter = 0x0D;
+  getObdValue( mode, parameter );
+  HOST.println("done");
   delay( 5000 );
   /*
   if (OBD.available() > 0) {
@@ -98,69 +119,6 @@ void loop()
 }
 
 
-/**
- * requestObdValue();
- */
-void requestObdValue()
-{
-  int i;
-  char responseValue[8];
-  //char responseCode[8];
-
-  HOST.println("Sent ATRV");
-  OBD.println("ATRV");
-  
-  /*Serial.print(responseValue[0], HEX);
-  Serial.print(responseValue[1], HEX);
-  Serial.print(responseValue[2], HEX);
-  Serial.print(responseValue[3], HEX);
-  Serial.print(responseValue[4], HEX);
-  Serial.print(responseValue[5], HEX);
-  Serial.print(responseValue[6], HEX); */
-  //Serial.println("===========================");
-  //delay(1000);
-}
-
-
-/**
- */
-void readObdResponse()
-{
-  int incomingByte = 0;  // for incoming serial data
-  char readChar;
-  int i = 0;
-  //char response[8];
-  boolean complete = 0;
-  //Serial.print("Reading: ");
-  while(complete == 0)
-  {
-    if (OBD.available() > 0) {
-      incomingByte = OBD.read();
-      readChar = (int)incomingByte;
-      //response = readChar;
-      
-      HOST.print(readChar);
-      if(readChar == 13)
-      {
-        complete = 1;
-        //Serial.print("");
-      //} else {
-        //Serial.print(readChar);
-        //response[i] = incomingByte;
-        //i++;
-      }
-    }
-  }
-  HOST.println("");
-  //Serial.println(" done");
-  
-  /*Serial.print("Hex response: ");
-  while(response[i]) {
-    Serial.print(response[i], HEX);
-    i++;
-  }
-  Serial.println(" done");*/
-}
 
 
 /**
@@ -183,7 +141,7 @@ void getGpsReading( char* gpsReading)
       i++;
     }
   }
-  //gpsReading[i] = '\0';   // Null-terminate the string
+  gpsReading[i] = '\0';   // Null-terminate the string
 }
 
 
@@ -197,12 +155,28 @@ void getObdValue( byte mode, byte parameter )
     byte obdRawValue[2];
     byte length = 2;
     getRawObdResponse( mode, parameter, obdRawValue, length );
+    byte A = obdRawValue[0];
+    byte B = obdRawValue[1];
+    
     HOST.print( "RPM: " );
-    HOST.print( obdRawValue[0], HEX );
+    HOST.println( obdRawValue[0], HEX );
     HOST.println( obdRawValue[1], HEX );
+    HOST.println(((A*256) + B)/4);
+  } else if(( mode == 0x01 ) && ( parameter == 0x0D ))
+  {
+    // 010D (Vehicle speed)
+    byte obdRawValue[1];
+    byte length = 1;
+    getRawObdResponse( mode, parameter, obdRawValue, length );
+    byte A = obdRawValue[0];
+    
+    HOST.print( "Speed: " );
+    HOST.println( obdRawValue[0], HEX );
+    HOST.println(A, DEC);
   } else {
     HOST.print("unknown parameter");
   }
+  //HOST.println("ended");
 }
 
 /**
@@ -211,8 +185,10 @@ void getRawObdResponse( byte mode, byte parameter, byte* obdRawValue, byte lengt
 {
   OBD.flush();  // Flush the receive buffer so we get a fresh reading
   //OBD.print( mode );
-  //OBD.print( parameter );
-  OBD.println( "ATRV" );
+  //OBD.println( parameter );
+  OBD.println( '010D' );
+  //OBD.println();
+  //OBD.println( "ATRV" );
   //OBD.print(13, HEX);
   byte i = 0;
 
@@ -222,6 +198,18 @@ void getRawObdResponse( byte mode, byte parameter, byte* obdRawValue, byte lengt
     if (OBD.available() > 0)
     {
       incomingByte = OBD.read();
+      HOST.print("r0: ");
+      HOST.println(incomingByte, HEX);
+    }
+  }
+  incomingByte = 1;
+  while(incomingByte != 0x0D)
+  {
+    if (OBD.available() > 0)
+    {
+      incomingByte = OBD.read();
+      HOST.print("r1: ");
+      HOST.println(incomingByte, HEX);
       obdRawValue[i] = incomingByte;
       i++;
     }

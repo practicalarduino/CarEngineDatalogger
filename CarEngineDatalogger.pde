@@ -37,12 +37,15 @@ byte logActive = 0;
 #define GPS Serial2
 
 // Vinculum setup
-#define FLASH Serial3
-
+#define FLASH Serial3        // Serial port for VDIP connection
+#define FLASH_RESET      12  // Pin for reset of VDIP module (active low)
+//#define FLASH_STATUS_LED 11
+//#define FLASH_WRITE_LED  10
 
 void gpsdump(TinyGPS &gps);
 bool feedgps();
 void printFloat(double f, int digits = 2);
+char * floatToString(char * outstr, float value, int places, int minwidth=0, bool rightjustify=false);
 
 /**
  * Initial configuration
@@ -65,9 +68,24 @@ void setup() {
 
   // Set up the Vinculum flash storage device
   HOST.print(" * Initialising flash storage   ");
+  //pinMode(FLASH_STATUS_LED, OUTPUT);
+  //digitalWrite(FLASH_STATUS_LED, HIGH);
+  
+  //pinMode(FLASH_WRITE_LED, OUTPUT);
+  //digitalWrite(FLASH_WRITE_LED, LOW);
+  
+  pinMode(FLASH_RESET, OUTPUT);
+  digitalWrite(FLASH_RESET, LOW);
+  //digitalWrite(FLASH_STATUS_LED, HIGH);
+  //digitalWrite(FLASH_WRITE_LED, HIGH);
+  delay( 100 );
+  digitalWrite(FLASH_RESET, HIGH);
+  delay( 100 );
   FLASH.begin(9600);   // Port for connection to Vinculum flash memory module
   FLASH.print("IPA");  // Sets the VDIP to ASCII mode
   FLASH.print(13, BYTE);
+  //digitalWrite(FLASH_STATUS_LED, LOW);
+  //digitalWrite(FLASH_WRITE_LED, LOW);
   HOST.println("[OK]");
 }
 
@@ -86,11 +104,13 @@ void loop()
     {                                       // Open file and start logging
       HOST.println("Start logging");
       logActive = 1;
+      //digitalWrite(FLASH_STATUS_LED, HIGH);
       FLASH.print("OPW ARDUINO.TXT");
       FLASH.print(13, BYTE);
     } else if( readChar == '2') {           // Stop logging and close file
       HOST.println("Stop logging");
       logActive = 0;
+      //digitalWrite(FLASH_STATUS_LED, LOW);
       FLASH.print("CLF ARDUINO.TXT");
       FLASH.print(13, BYTE);
     } else if (readChar == '3'){            // Display the file
@@ -101,6 +121,20 @@ void loop()
       HOST.println("Deleting file");
       FLASH.print("DLF ARDUINO.TXT");
       FLASH.print(13, BYTE);
+    } else if (readChar == '5'){            // Directory listing
+      HOST.println("Directory listing");
+      FLASH.print("DIR");
+      FLASH.print(13, BYTE);  
+    } else if (readChar == '6'){            // Reset the VDIP  
+      HOST.print(" * Initialising flash storage   ");
+      pinMode(FLASH_RESET, OUTPUT);
+      digitalWrite(FLASH_RESET, LOW);
+      delay( 100 );
+      digitalWrite(FLASH_RESET, HIGH);
+      delay( 100 );
+      FLASH.print("IPA");  // Sets the VDIP to ASCII mode
+      FLASH.print(13, BYTE);
+      HOST.println("[OK]");
     } else {                                // HELP!
       HOST.print("Unrecognised command '");
       HOST.print(readChar);
@@ -109,12 +143,14 @@ void loop()
       HOST.println("2 - Stop logging");
       HOST.println("3 - Display logfile");
       HOST.println("4 - Delete logfile");
+      HOST.println("5 - Directory listing");
+      HOST.println("6 - Reset VDIP module");
     }
     
   }
   
   // Echo data from flash to the host
-  if (FLASH.available() > 0)
+  while (FLASH.available() > 0)
   {
     incomingByte = FLASH.read();
     if(incomingByte == 13) {
@@ -127,77 +163,61 @@ void loop()
   if(logActive == 1)
   {
     HOST.println("Logging");
-    if (feedgps())
+    
+    if (feedgps())  // Only do a log write if we have GPS data
     {
+      //digitalWrite(FLASH_WRITE_LED, HIGH);
       HOST.println("Acquired Data");
       HOST.println("-------------");  
-      //gpsdump(gps);
-      //HOST.println("-------------");
+      gpsdump(gps);
+      HOST.println("-------------");
       float fLat, fLon;
       unsigned long age, date, time, chars;
-      int year;
-      byte month, day, hour, minute, second, hundredths;
-      unsigned short sentences, failed;
-    
-      /* HOST.print(" Fix age: ");
-      HOST.print(age);
-      HOST.println("ms."); */
+      //int year;
+      //byte month, day, hour, minute, second, hundredths;
+      //unsigned short sentences, failed;
       
       gps.f_get_position(&fLat, &fLon, &age);
+      gps.get_datetime(&date, &time, &age);
+      
       HOST.print("Lat/Long(float): ");
       printFloat(fLat, 5);
       HOST.print(", ");
       printFloat(fLon, 5);
       HOST.println();
       
-      //////////////////////////////////////////////////////////////
-      //writeFloatToFlash( fLat );
-
+      /////////////////////// START WRITE TO FILE //////////////////////////////
+      HOST.println("------------- START WRITE TO FILE -----------------");
+      
+      /* writeLongToFlash( date );
       FLASH.print("WRF 1");
       FLASH.print(13, BYTE);
-      FLASH.print(",");
+      FLASH.print(44, BYTE);  // ,  */
       
-      //////////////////////////////////////////////////////////////
+      /*writeLongToFlash( time );
+      FLASH.print("WRF 1");
+      FLASH.print(13, BYTE);
+      FLASH.print(44, BYTE);  // ,  */
+      
+      writeFloatToFlash( fLat );
+      FLASH.print("WRF 1");
+      FLASH.print(13, BYTE);
+      FLASH.print(44, BYTE);  // ,
+      
       writeFloatToFlash( fLon );
-
       FLASH.print("WRF 1");
       FLASH.print(13, BYTE);
-      FLASH.print(",");
-      
-      /*int lonLen = 10;
-      HOST.println(lonLen);
-      FLASH.print("WRF ");
-      FLASH.print(lonLen + 1);
-      FLASH.print(13, BYTE);
-      FLASH.print(fLon);
-      FLASH.print(13, BYTE);
-      */
-      
+      FLASH.print(44, BYTE);  // ,
+
       // End the dataset with a newline
       FLASH.print("WRF 1");
       FLASH.print(13, BYTE);
       FLASH.print(13, BYTE);
-      HOST.println("-------------------------------------");
       
-      /*FLASH.print("WRF ");          //write to file (file needs to have been opened to write first)
-      
-      FLASH.print(8, DEC);
-      FLASH.print(13, BYTE);        //return to say command is finished
-      FLASH.print(fLat);
-      FLASH.print(13, BYTE);*/
+      HOST.println("------------- END WRITE TO FILE -------------------");
+      /////////////////////// END WRITE TO FILE //////////////////////////////
+      //digitalWrite(FLASH_WRITE_LED, LOW);
     }
-    /* FLASH.print("WRF ");          //write to file (file needs to have been opened to write first)
-    FLASH.print(numOfChars);       //needs to then be told how many characters will be written
-    FLASH.print(13, BYTE);        //return to say command is finished
-    FLASH.print(gpsReading);
-    FLASH.print(13, BYTE); */
-    
-    /*FLASH.print("WRF ");          //write to file (file needs to have been opened to write first)
-    FLASH.print(8, DEC);
-    FLASH.print(13, BYTE);        //return to say command is finished
-    FLASH.print(1234567);
-    FLASH.print(13, BYTE);
-    //HOST.println("done"); */
     delay( 1500 );
   }
   

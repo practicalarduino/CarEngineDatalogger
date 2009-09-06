@@ -1,62 +1,5 @@
-void loop1()
-{
-  
-  
-  //HOST.println( "Getting GPS reading" );
-  if(logActive == 1)
-  {
-    
-    
-    //HOST.println(numOfChars);
-    
-    /* FLASH.print("WRF ");          //write to file (file needs to have been opened to write first)
-    FLASH.print(numOfChars);       //needs to then be told how many characters will be written
-    FLASH.print(13, BYTE);        //return to say command is finished
-    FLASH.print(gpsReading);
-    FLASH.print(13, BYTE); */
-    
-    /* FLASH.print("WRF ");          //write to file (file needs to have been opened to write first)
-    FLASH.print(8, DEC);
-    FLASH.print(13, BYTE);        //return to say command is finished
-    FLASH.print(1234567);
-    FLASH.print(13, BYTE); */
-    //HOST.println("done");
-    delay( 1000 );
-  }
-  byte mode = 0x0;
-  byte parameter = 0x0;
-  
-  /* HOST.println( "Getting RPM reading" );
-  mode = 0x01;
-  parameter = 0x0C;
-  getObdValue( mode, parameter );
-  HOST.println("done");
-  delay( 100 ); */
-  
-  /* HOST.println( "Getting speed reading" );
-  mode = 0x01;
-  parameter = 0x0D;
-  getObdValue( mode, parameter );
-  HOST.println("done");
-  */
-  //delay( 5000 );
-  /*
-  if (OBD.available() > 0) {
-      incomingByte = OBD.read();
-      readChar = (int)incomingByte;
-      //response = readChar;
-      if((incomingByte == 0x3E) || (incomingByte == 0x0D))   // The hex value for the ">" prompt returned by the ELM327
-      {
-        HOST.println();
-      } else {
-        HOST.print(readChar);
-      }
-    }
-  */
-}
-
-
 /**
+ * getObdValue
  */
 void getObdValue( byte mode, byte parameter )
 {
@@ -91,6 +34,7 @@ void getObdValue( byte mode, byte parameter )
 }
 
 /**
+ * getRawObdResponse
  */
 void getRawObdResponse( byte mode, byte parameter, byte* obdRawValue, byte length )
 {

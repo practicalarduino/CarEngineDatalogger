@@ -1,90 +1,93 @@
 /**
  * getObdValue
  */
-void getObdValue( byte mode, byte parameter )
+//void getObdValue( char* mode, char* parameter )
+void getObdValue( char *pid, class PString *logEntry )
 {
-  if(( mode == 0x01 ) && ( parameter == 0x0C ))
+  if( pid == "010C" ) // RPM
   {
-    // 010C (RPM)
-    byte obdRawValue[24];
+    int obdResponse[2];
     byte responseLength = 2;
-    getRawObdResponse( mode, parameter, obdRawValue, responseLength );
-    /*byte A = obdRawValue[0];
-    byte B = obdRawValue[1]; */
-    
-    byte i = 0;
-    while(i < 24) {
-      HOST.print("b");
-      HOST.print(i, DEC);
-      HOST.print(": ");
-      HOST.println(obdRawValue[i], BYTE);
-      i++;
-    }
-    
-    /* HOST.print( "RPM: " );
+    getRawObdResponse( pid, obdResponse );
+    /*
+    byte A = obdResponse[0];
+    byte B = obdResponse[1];
+    HOST.print( "RPM: " );
     HOST.println( obdRawValue[0], HEX );
     HOST.println( obdRawValue[1], HEX );
     HOST.println(((A*256) + B)/4); */
-  } else if(( mode == 0x01 ) && ( parameter == 0x0D ))
+  } else if( pid == "010D" )
   {
     // 010D (Vehicle speed)
-    byte obdRawValue[10];
-    byte responseLength = 1;
-    getRawObdResponse( mode, parameter, obdRawValue, responseLength );
-    byte A = obdRawValue[0];
-    
-    HOST.print( "Speed: " );
-    HOST.println( obdRawValue[0], HEX );
-    HOST.println(A, DEC);
+    // blah blah blah
   } else {
     HOST.print("unknown parameter");
   }
-  //HOST.println("ended");
 }
+
 
 /**
  * getRawObdResponse
  */
-void getRawObdResponse( byte mode, byte parameter, byte* obdRawValue, byte responseLength )
+void getRawObdResponse( char *pid, int *obdResponse )
 {
-  OBD.flush();  // Flush the receive buffer so we get a fresh reading
-  //OBD.print( mode );
-  //OBD.println( parameter );
-  OBD.println( "010C" );
-  //OBD.println();
-  //OBD.println( "ATRV" );
-  //OBD.print(13, HEX);
   byte i = 0;
+  byte incomingByte;
 
-  incomingByte = 1;
-  //while(incomingByte != 0x0D)
-  while(incomingByte != 0x3E)
+  OBD.flush();  // Flush the receive buffer so we get a fresh reading
+  OBD.println( pid );
+
+  while( incomingByte != '>' )    // 0x3E is the ">" prompt returned by the adaptor
   {
-    if (OBD.available() > 0)
+    if( OBD.available() > 0 )
     {
       incomingByte = OBD.read();
-      if(incomingByte == 0x0D)
+      if( incomingByte != 0x0D )
       {
-        HOST.println();
-      } else {
-        //HOST.print("r0: ");
-        HOST.print(incomingByte, BYTE);
-        obdRawValue[i] = incomingByte;
+        //HOST.print(incomingByte, BYTE);
+        obdResponse[i] = incomingByte;
+        //obdResponse[i] = strtoul(incomingByte, NULL, 16);  // 16 = hex
         i++;
+      } else {
+        //HOST.println();
       }
+      obdResponse[i++] = '\0';  // Add a null character to the end
     }
-    //delay(100);
   }
-  /*incomingByte = 1;
-  while(incomingByte != 0x0D)
-  {
-    if (OBD.available() > 0)
-    {
-      incomingByte = OBD.read();
-      HOST.print("r1: ");
-      HOST.println(incomingByte, HEX);
-      obdRawValue[i] = incomingByte;
-      i++;
-    }
-  } */
+}
+
+
+/**
+ * configureObdAdapter
+ */
+void configureObdAdapter()
+{
+  OBD.println( "ATZ" );   // Force a reset of the adapter
+  OBD.println( "ATE0" );  // Disable command echo
+  OBD.println( "ATS0" );  // Disable spaces between response bytes
+}
+
+
+/**
+ */
+float obdConvert_0104( unsigned int A, unsigned int B, unsigned int C, unsigned int D ) {
+  return (float)A*100.0f/255.0f;
+}
+
+
+// From http://code.google.com/p/opengauge/source/browse/trunk/obduino/obduino.pde
+// for inspiration
+byte elm_compact_response(byte *buf, char *str)
+{
+  byte i=0;
+
+  // start at 6 which is the first hex byte after header
+  // ex: "41 0C 1A F8"
+  // return buf: 0x1AF8
+  // NB: it's not 6 for us, because we suppress command echo and spaces
+  //str+=6;
+  while(*str!='\0')
+    buf[i++]=strtoul(str, &str, 16);  // 16 = hex
+
+  return i;
 }

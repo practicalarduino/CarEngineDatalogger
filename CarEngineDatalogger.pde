@@ -32,8 +32,7 @@ TinyGPS gps;
 #include <PString.h>
 
 #define ledPin 13
-int incomingByte = 0;  // for incoming serial data
-char readChar;
+//char incomingByte;  // for incoming serial data
 
 // Host serial connection setup
 #define HOST Serial
@@ -52,9 +51,9 @@ byte logActive = 0;
 #define FLASH_WRITE_LED  10  // LED to show when write is in progress
 #define FLASH_RTS_PIN     9  // Check if the VDIP is ready to receive. Active low
 
-void gpsdump(TinyGPS &gps);
-bool feedgps();
-void printFloat(double f, int digits = 2);
+//void gpsdump(TinyGPS &gps);
+//bool feedgps();
+void printFloat(double f, int digits=2);
 //char * floatToString(char * outstr, float value, int places, int minwidth=0, bool rightjustify=false);
 
 
@@ -63,17 +62,18 @@ void printFloat(double f, int digits = 2);
  */
 void setup() {
   pinMode(ledPin, OUTPUT);
-  HOST.begin(38400);   // Port for connection to host
+  HOST.begin(38400);      // Port for connection to host
   HOST.println("Car Engine Datalogger starting up");
 
   // Set up the GPS device
   HOST.print(" * Initialising GPS             ");
-  GPS.begin(57600);    // Port for connection to GPS module
+  GPS.begin(57600);       // Port for connection to GPS module
   HOST.println("[OK]");
   
   // Set up the OBD-II interface
   HOST.print(" * Initialising OBD-II          ");
-  OBD.begin(38400);    // Port for connection to OBD adaptor
+  OBD.begin(38400);       // Port for connection to OBD adaptor
+  configureObdAdapter();  // Set options in the OBD adapter
   HOST.println("[OK]");
 
   // Set up the Vinculum flash storage device
@@ -93,10 +93,9 @@ void setup() {
   delay( 100 );
   digitalWrite(FLASH_RESET, HIGH);
   delay( 100 );
-  FLASH.begin(9600);   // Port for connection to Vinculum flash memory module
-  FLASH.print("IPA");  // Sets the VDIP to ASCII mode
+  FLASH.begin(9600);      // Port for connection to Vinculum flash memory module
+  FLASH.print("IPA");     // Sets the VDIP to ASCII mode
   FLASH.print(13, BYTE);
-  
   
   digitalWrite(FLASH_STATUS_LED, LOW);
   digitalWrite(FLASH_WRITE_LED, LOW);
@@ -109,37 +108,27 @@ void setup() {
  */
 void loop()
 {
-  // Check for commands from the host
-  if (HOST.available() > 0)
-  {
-    processCommand( HOST.read() );
-  }
+  // Process any commands from the host
+  processHostCommands();
   
-  // Echo data from flash to the host
-  while (FLASH.available() > 0)
-  {
-    incomingByte = FLASH.read();
-    if(incomingByte == 13) {
-      Serial.println();
-    }
-    Serial.print(incomingByte, BYTE);
-  }
-  
+  // Echo data from flash back to the host
+  processFlashBuffer();
+
   // Only do stuff if we're in logging mode
-  if(logActive == 1)
+  if( logActive == 1 )
   {
-    if (feedgps())  // Only do a log write if we have GPS data
+    if( feedgps() )  // Only do a log write if we have GPS data
     {
-      // Log entry fields:
+      // Log entry columns:
       // Date, Time, Lat, Lon, Altitude (m), Speed (km/h)
+
+      digitalWrite(FLASH_WRITE_LED, HIGH);  // Indicate that we're taking a log reading
 
       // Set up an 80-character buffer for writing to the memory stick
       char flashBuffer[80];
-      PString logEntry(flashBuffer, sizeof(flashBuffer)); // Create a PString object called logEntry
+      PString logEntry( flashBuffer, sizeof( flashBuffer ) ); // Create a PString object called logEntry
       char valBuffer[15]; // Buffer for converting floats to strings before appending to flashBuffer
-      
-      digitalWrite(FLASH_WRITE_LED, HIGH);
-      
+            
       /////////////////////// ACQUIRE GPS DAT //////////////////////////////
       //HOST.println("Acquired Data");
       //HOST.println("-------------");
@@ -150,13 +139,10 @@ void loop()
       int year;
       byte month, day, hour, minute, second, hundredths;
       //unsigned short sentences, failed;
-      
+
       gps.f_get_position( &fLat, &fLon, &age );
       gps.get_datetime( &date, &time, &age );
       gps.crack_datetime( &year, &month, &day, &hour, &minute, &second, &hundredths, &age );
-      
-      //logEntry += millis();
-      //logEntry += ",";
       
       // Date (yyyy-m-d, but *should* be yyyy-mm-dd)
       floatToString(valBuffer, year, 0);
@@ -169,7 +155,7 @@ void loop()
       logEntry += valBuffer;
       logEntry += ",";
       
-      // time (hours:minutes:seconds.hundredths)
+      // Time (hours:minutes:seconds.hundredths)
       floatToString(valBuffer, static_cast<int>(hour), 0);
       logEntry += valBuffer;
       logEntry += ":";
@@ -216,9 +202,8 @@ void loop()
       
       
       HOST.println( "Getting speed reading" );
-      byte mode = 0x01;
-      byte parameter = 0x0C;
-      getObdValue( mode, parameter );
+      char pid[] = "010C";
+      //getObdValue( pid, logEntry );
       HOST.println("done");
       
       //delay( 5000 );

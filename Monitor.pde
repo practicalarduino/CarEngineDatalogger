@@ -11,7 +11,7 @@ void processCommand( char readChar )
     HOST.println("Stop logging");
     if(digitalRead(FLASH_RTS_PIN) == HIGH)
     {
-      HOST.println("Oops, it's high 2");
+      HOST.println("VDIP BUFFER FULL");
     }
     logActive = 0;
     digitalWrite(FLASH_STATUS_LED, LOW);

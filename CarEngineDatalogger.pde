@@ -214,9 +214,10 @@ void loop()
       HOST.println("done");
       delay( 100 ); */
       
+      
       HOST.println( "Getting speed reading" );
-      mode = 0x01;
-      parameter = 0x0D;
+      byte mode = 0x01;
+      byte parameter = 0x0C;
       getObdValue( mode, parameter );
       HOST.println("done");
       

@@ -72,10 +72,9 @@ void setup() {
   HOST.println("[OK]");
   
   // Set up the OBD-II interface
-  /* HOST.print(" * Initialising OBD-II          ");
+  HOST.print(" * Initialising OBD-II          ");
   OBD.begin(38400);    // Port for connection to OBD adaptor
   HOST.println("[OK]");
-  */
 
   // Set up the Vinculum flash storage device
   HOST.print(" * Initialising flash storage   ");
@@ -140,6 +139,8 @@ void loop()
       char valBuffer[15]; // Buffer for converting floats to strings before appending to flashBuffer
       
       digitalWrite(FLASH_WRITE_LED, HIGH);
+      
+      /////////////////////// ACQUIRE GPS DAT //////////////////////////////
       //HOST.println("Acquired Data");
       //HOST.println("-------------");
       //gpsdump(gps);
@@ -150,13 +151,14 @@ void loop()
       byte month, day, hour, minute, second, hundredths;
       //unsigned short sentences, failed;
       
-      gps.f_get_position(&fLat, &fLon, &age);
-      gps.get_datetime(&date, &time, &age);
-      gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, &hundredths, &age);
+      gps.f_get_position( &fLat, &fLon, &age );
+      gps.get_datetime( &date, &time, &age );
+      gps.crack_datetime( &year, &month, &day, &hour, &minute, &second, &hundredths, &age );
       
       //logEntry += millis();
       //logEntry += ",";
       
+      // Date (yyyy-m-d, but *should* be yyyy-mm-dd)
       floatToString(valBuffer, year, 0);
       logEntry += valBuffer;
       logEntry += "-";
@@ -167,6 +169,7 @@ void loop()
       logEntry += valBuffer;
       logEntry += ",";
       
+      // time (hours:minutes:seconds.hundredths)
       floatToString(valBuffer, static_cast<int>(hour), 0);
       logEntry += valBuffer;
       logEntry += ":";
@@ -180,24 +183,60 @@ void loop()
       logEntry += valBuffer;
       logEntry += ",";
       
+      // Latitude
       floatToString(valBuffer, fLat, 5);
       logEntry += valBuffer;
       logEntry += ",";
 
+      // Longitude
       floatToString(valBuffer, fLon, 5);
       logEntry += valBuffer;
       logEntry += ",";
       
+      // Altitude (meters)
       floatToString(valBuffer, gps.f_altitude(), 2);
       logEntry += valBuffer;
       logEntry += ",";
       
+      // Speed (km/h)
       floatToString(valBuffer, gps.f_speed_kmph(), 2);
       logEntry += valBuffer;
       //logEntry += ",";
 
+      /////////////////////// ACQUIRE OBD DATA //////////////////////////////
+      //byte mode = 0x0;
+      //byte parameter = 0x0;
+      
+      /* HOST.println( "Getting RPM reading" );
+      mode = 0x01;
+      parameter = 0x0C;
+      getObdValue( mode, parameter );
+      HOST.println("done");
+      delay( 100 ); */
+      
+      HOST.println( "Getting speed reading" );
+      mode = 0x01;
+      parameter = 0x0D;
+      getObdValue( mode, parameter );
+      HOST.println("done");
+      
+      //delay( 5000 );
+      /*
+      while( OBD.available() > 0 )
+      {
+        incomingByte = OBD.read();
+        readChar = (byte)incomingByte;
+        //response = readChar;
+        if((incomingByte == 0x3E) || (incomingByte == 0x0D))   // The hex value for the ">" prompt returned by the ELM327
+        {
+          HOST.println();
+        } else {
+          HOST.print(readChar);
+        }
+      }
+      */
 
-      /////////////////////// START WRITE TO FILE //////////////////////////////
+      /////////////////////// WRITE TO FLASH //////////////////////////////
       //int logEntryLength = logEntry.length();
       byte position = 0;
       
@@ -221,46 +260,14 @@ void loop()
       }
       
       FLASH.print(13, BYTE);               // End the log entry with a newline
-      /////////////////////// END WRITE TO FILE //////////////////////////////
       digitalWrite(FLASH_WRITE_LED, LOW);
+
       
       /*if(digitalRead(FLASH_RTS_PIN) == HIGH)
       {
         HOST.println("Oops, it's high");
       } */
-      delay( 500 );  // Delay if we've written a log entry
+      delay( 500 );  // Delay only if we've written a log entry
     }
   }
-  
-  
-  //byte mode = 0x0;
-  //byte parameter = 0x0;
-  
-  /* HOST.println( "Getting RPM reading" );
-  mode = 0x01;
-  parameter = 0x0C;
-  getObdValue( mode, parameter );
-  HOST.println("done");
-  delay( 100 ); */
-  
-  /* HOST.println( "Getting speed reading" );
-  mode = 0x01;
-  parameter = 0x0D;
-  getObdValue( mode, parameter );
-  HOST.println("done");
-  */
-  //delay( 5000 );
-  /*
-  if (OBD.available() > 0) {
-      incomingByte = OBD.read();
-      readChar = (int)incomingByte;
-      //response = readChar;
-      if((incomingByte == 0x3E) || (incomingByte == 0x0D))   // The hex value for the ">" prompt returned by the ELM327
-      {
-        HOST.println();
-      } else {
-        HOST.print(readChar);
-      }
-    }
-  */
 }

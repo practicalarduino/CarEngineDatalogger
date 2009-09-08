@@ -3,6 +3,25 @@
  */
 void processHostCommands()
 {
+  // Check for state change from the front panel button
+  if(logActive && !digitalRead(LOG_LED))
+  {
+    logActive = 0;
+    digitalWrite(FLASH_STATUS_LED, LOW);
+    FLASH.print("CLF ARDUINO.TXT");
+    FLASH.print(13, BYTE);
+    HOST.println("Stop logging");
+  }
+  if( !logActive && digitalRead(LOG_LED))
+  {
+    logActive = 1;
+    digitalWrite(FLASH_STATUS_LED, HIGH);
+    FLASH.print("OPW ARDUINO.TXT");
+    FLASH.print(13, BYTE);
+    HOST.println("Start logging");
+  }
+  
+  // Check for commands from the host
   if( HOST.available() > 0)
   {
     char readChar = HOST.read();
@@ -12,6 +31,7 @@ void processHostCommands()
       HOST.println("Start logging");
       logActive = 1;
       digitalWrite(FLASH_STATUS_LED, HIGH);
+      digitalWrite(LOG_LED, HIGH);
       FLASH.print("OPW ARDUINO.TXT");
       FLASH.print(13, BYTE);
     } else if( readChar == '2') {           // Stop logging and close file
@@ -22,6 +42,7 @@ void processHostCommands()
       }
       logActive = 0;
       digitalWrite(FLASH_STATUS_LED, LOW);
+      digitalWrite(LOG_LED, LOW);
       FLASH.print("CLF ARDUINO.TXT");
       FLASH.print(13, BYTE);
     } else if (readChar == '3'){            // Display the file
@@ -57,5 +78,19 @@ void processHostCommands()
       HOST.println("5 - Directory listing");
       HOST.println("6 - Reset VDIP module");
     }
+  }
+}
+
+/**
+ * modeButton
+ * ISR attached to falling-edge interrupt 1 on digital pin 3
+ */
+void modeButton()
+{
+  if((millis() - logButtonTimestamp) > 300)
+  {
+    logButtonTimestamp = millis();
+    //HOST.println(logButtonTimestamp);
+    digitalWrite(LOG_LED, !digitalRead(LOG_LED));
   }
 }

@@ -51,6 +51,11 @@ byte logActive = 0;
 #define FLASH_WRITE_LED  10  // LED to show when write is in progress
 #define FLASH_RTS_PIN     9  // Check if the VDIP is ready to receive. Active low
 
+// Digital pin connected to the "log" status LED (active high)
+#define LOG_LED 4
+#define LOG_BUTTON 3
+volatile unsigned long logButtonTimestamp = 0;
+
 //void gpsdump(TinyGPS &gps);
 //bool feedgps();
 void printFloat(double f, int digits=2);
@@ -65,27 +70,32 @@ void setup() {
   HOST.begin(38400);      // Port for connection to host
   HOST.println("Car Engine Datalogger starting up");
 
+  pinMode(LOG_LED, OUTPUT);
+  digitalWrite(LOG_LED, LOW);
+  pinMode(LOG_BUTTON, INPUT);
+  digitalWrite(LOG_BUTTON, HIGH);
+
   // Set up the GPS device
   HOST.print(" * Initialising GPS             ");
   GPS.begin(57600);       // Port for connection to GPS module
   HOST.println("[OK]");
-  
+
   // Set up the OBD-II interface
-  HOST.print(" * Initialising OBD-II          ");
+  /* HOST.print(" * Initialising OBD-II          ");
   OBD.begin(38400);       // Port for connection to OBD adaptor
   configureObdAdapter();  // Set options in the OBD adapter
-  HOST.println("[OK]");
+  HOST.println("[OK]"); */
 
   // Set up the Vinculum flash storage device
   HOST.print(" * Initialising flash storage   ");
   pinMode(FLASH_STATUS_LED, OUTPUT);
   digitalWrite(FLASH_STATUS_LED, HIGH);
-  
+
   pinMode(FLASH_WRITE_LED, OUTPUT);
   digitalWrite(FLASH_WRITE_LED, LOW);
-  
+
   pinMode(FLASH_RTS_PIN, INPUT);
-  
+
   pinMode(FLASH_RESET, OUTPUT);
   digitalWrite(FLASH_RESET, LOW);
   digitalWrite(FLASH_STATUS_LED, HIGH);
@@ -96,10 +106,12 @@ void setup() {
   FLASH.begin(9600);      // Port for connection to Vinculum flash memory module
   FLASH.print("IPA");     // Sets the VDIP to ASCII mode
   FLASH.print(13, BYTE);
-  
+
   digitalWrite(FLASH_STATUS_LED, LOW);
   digitalWrite(FLASH_WRITE_LED, LOW);
   HOST.println("[OK]");
+  
+  attachInterrupt(1, modeButton, FALLING);
 }
 
 
@@ -226,9 +238,9 @@ void loop()
       //int logEntryLength = logEntry.length();
       byte position = 0;
       
-      HOST.print(logEntry.length());
+      /*HOST.print(logEntry.length());
       HOST.print(": ");
-      HOST.println(logEntry);
+      HOST.println(logEntry); */
       
       FLASH.print("WRF ");
       FLASH.print(logEntry.length() + 1);  // 1 extra for the newline
@@ -253,7 +265,7 @@ void loop()
       {
         HOST.println("Oops, it's high");
       } */
-      delay( 500 );  // Delay only if we've written a log entry
+      delay( 100 );  // Delay only if we've written a log entry
     }
   }
 }

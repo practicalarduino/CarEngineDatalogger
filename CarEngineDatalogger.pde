@@ -54,11 +54,14 @@ byte logActive = 0;
 // Digital pin connected to the "log" status LED (active high)
 #define LOG_LED 4
 #define LOG_BUTTON 3
+#define LOG_BUTTON_INT 1
+#define POWER_SENSE_PIN 2
+#define POWER_SENSE_INT 0
 volatile unsigned long logButtonTimestamp = 0;
 
 //void gpsdump(TinyGPS &gps);
 //bool feedgps();
-void printFloat(double f, int digits=2);
+void printFloat( double f, int digits=2 );
 //char * floatToString(char * outstr, float value, int places, int minwidth=0, bool rightjustify=false);
 
 
@@ -111,7 +114,11 @@ void setup() {
   digitalWrite(FLASH_WRITE_LED, LOW);
   HOST.println("[OK]");
   
+  // Interrupt triggered by pressing "log on/off" button
   attachInterrupt(1, modeButton, FALLING);
+  
+  // Interrupt triggered by falling voltage on power supply input
+  attachInterrupt(0, powerFail, FALLING);
 }
 
 
